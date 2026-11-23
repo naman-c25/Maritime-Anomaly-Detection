@@ -21,5 +21,9 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ vars.HF_SPACE }}
         run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE" ]; then
+            echo "::error::Set the repository secret HF_TOKEN and the variable HF_SPACE (<hf-username>/<space-name>) under Settings → Secrets and variables → Actions, then re-run this workflow."
+            exit 1
+          fi
           git lfs install
           git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" HEAD:main
