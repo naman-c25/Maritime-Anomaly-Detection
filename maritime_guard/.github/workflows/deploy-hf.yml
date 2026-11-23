@@ -1,0 +1,25 @@
+# Every push to main is mirrored to the Hugging Face Space, which rebuilds the Docker image.
+# One-time setup in GitHub → Settings → Secrets and variables → Actions:
+#   secret   HF_TOKEN     a Hugging Face access token with "write" permission
+#   variable HF_SPACE     <hf-username>/<space-name>, e.g. naman/maritimeguard
+name: Deploy to Hugging Face Space
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Push to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          git lfs install
+          git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" HEAD:main

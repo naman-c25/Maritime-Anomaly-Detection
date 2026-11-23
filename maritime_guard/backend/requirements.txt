@@ -1,0 +1,17 @@
+# Serving: everything the API (AIS model, vision branch, fusion) needs.
+# torch / torchvision: install the CPU build on servers, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch>=2.5
+torchvision>=0.20
+ultralytics>=8.3,<9
+lap>=0.5                      # ByteTrack assignment
+opencv-python-headless>=4.9
+numpy>=2.0
+pandas>=2.2
+scipy>=1.13
+scikit-learn==1.9.0           # same version that pickled models/ais/scaler.pkl
+pyyaml>=6
+imageio-ffmpeg>=0.5           # H.264 encoding of annotated videos for the browser
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9

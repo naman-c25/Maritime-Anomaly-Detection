@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Data and run artefacts (large / reproducible)
+backend/data/
+backend/runs/
+backend/outputs/
+backend/demo/cache_tmp/
+backend/server.log
+backend/models/yolov8s.pt
+backend/models/yolov8n.pt
+*.zip
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Secrets / local
+.env
+.env.*
+!.env.example
+.claude/

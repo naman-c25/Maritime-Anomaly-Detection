@@ -1,0 +1,37 @@
+{
+  "source": "Ais.ipynb, percentiles of the training reconstruction errors (cell 'Percentiles'); min and max of the training errors as the 0 and 100 % points",
+  "quantiles": [
+    [
+      0.0009707476,
+      0.0
+    ],
+    [
+      0.0272,
+      0.5
+    ],
+    [
+      0.3535,
+      0.9
+    ],
+    [
+      0.8028,
+      0.95
+    ],
+    [
+      2.2987,
+      0.99
+    ],
+    [
+      5.7605,
+      0.999
+    ],
+    [
+      29.2259,
+      0.9999
+    ],
+    [
+      421.20285,
+      1.0
+    ]
+  ]
+}

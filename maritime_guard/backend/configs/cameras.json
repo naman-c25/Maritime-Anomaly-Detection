@@ -1,0 +1,164 @@
+{
+  "cameras": {
+    "marina_south_demo": {
+      "description": "Demo camera for the Singapore Maritime Dataset clip (shore camera looking south over the anchorage). The ground-control points are an approximate calibration made for the demo, not a surveyed one; measure real GCPs before using positions operationally.",
+      "name": "Marina South shore camera (demo)",
+      "position": [
+        1.2715,
+        103.8635
+      ],
+      "frame_size": [
+        1280,
+        720
+      ],
+      "roi": null,
+      "restricted_zones": [
+        {
+          "name": "Restricted pilot channel",
+          "polygon": [
+            [
+              100,
+              228
+            ],
+            [
+              640,
+              228
+            ],
+            [
+              720,
+              520
+            ],
+            [
+              40,
+              520
+            ]
+          ]
+        }
+      ],
+      "gcp": {
+        "pixel": [
+          [
+            0,
+            700
+          ],
+          [
+            1280,
+            700
+          ],
+          [
+            1280,
+            230
+          ],
+          [
+            0,
+            230
+          ]
+        ],
+        "latlon": [
+          [
+            1.27096,
+            103.86375
+          ],
+          [
+            1.27096,
+            103.86325
+          ],
+          [
+            1.26779,
+            103.86177
+          ],
+          [
+            1.26779,
+            103.86523
+          ]
+        ]
+      }
+    },
+    "harbour_cam_1": {
+      "description": "Template for a fixed 1920x1080 harbour camera. Replace every coordinate with values measured on your own footage.",
+      "frame_size": [
+        1920,
+        1080
+      ],
+      "roi": [
+        [
+          0,
+          180
+        ],
+        [
+          1920,
+          180
+        ],
+        [
+          1920,
+          1080
+        ],
+        [
+          0,
+          1080
+        ]
+      ],
+      "restricted_zones": [
+        {
+          "name": "Restricted berth",
+          "polygon": [
+            [
+              1200,
+              500
+            ],
+            [
+              1700,
+              480
+            ],
+            [
+              1800,
+              900
+            ],
+            [
+              1150,
+              950
+            ]
+          ]
+        }
+      ],
+      "gcp": {
+        "pixel": [
+          [
+            100,
+            1000
+          ],
+          [
+            1800,
+            1000
+          ],
+          [
+            1500,
+            400
+          ],
+          [
+            300,
+            400
+          ]
+        ],
+        "latlon": [
+          [
+            40.6501,
+            -74.0452
+          ],
+          [
+            40.6503,
+            -74.0398
+          ],
+          [
+            40.6552,
+            -74.0405
+          ],
+          [
+            40.6549,
+            -74.0447
+          ]
+        ]
+      }
+    }
+  }
+}

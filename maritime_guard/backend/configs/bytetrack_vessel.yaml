@@ -1,0 +1,10 @@
+# ByteTrack settings for slow-moving vessels seen from a fixed camera.
+# Weak detections (score 0.1–0.25) only extend existing tracks; new tracks need a score of at least 0.4,
+# and lost tracks are kept for 60 processed frames so a vessel that is missed for a few frames keeps its ID.
+tracker_type: bytetrack
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.4
+track_buffer: 60
+match_thresh: 0.8
+fuse_score: True
