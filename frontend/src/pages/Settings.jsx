@@ -118,7 +118,7 @@ function SettingsBody() {
         </SettingRow>
       </SettingSection>
       <p className="text-xs text-slate-500">
-        Changes apply to this server session. To make them permanent, edit backend/configs/default.yaml and push.
+        Changes apply to this server session. To make them permanent, edit config.yaml and push.
       </p>
     </div>
   )

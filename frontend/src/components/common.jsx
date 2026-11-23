@@ -12,8 +12,8 @@ export function BackendGate({ children }) {
         <ServerCrash className="w-10 h-10 text-red-400 mx-auto" />
         <h3 className="section-title">Backend not reachable</h3>
         <p className="text-sm text-slate-400">
-          Start the API (<span className="font-mono text-ocean-400">uvicorn api.app:app --port 8000</span> in
-          backend/) or check VITE_API_URL. A sleeping cloud server can take up to a minute to wake up.
+          Start the API (<span className="font-mono text-ocean-400">uvicorn fusion_api.app:app --port 8000</span> in the
+          repository root) or check VITE_API_URL. A sleeping cloud server can take up to a minute to wake up.
         </p>
         <p className="text-xs text-slate-500 font-mono">{error}</p>
         <button onClick={refresh} className="btn-primary mx-auto">Retry</button>

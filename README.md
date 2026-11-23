@@ -8,76 +8,77 @@ app_port: 7860
 pinned: false
 ---
 
-# MaritimeGuard: AIS + camera maritime anomaly detection
+# MaritimeGuard: AI-based maritime anomaly detection
 
-One web app that combines:
-
-- **AIS branch:** an LSTM autoencoder (trained in Ais.ipynb on Marine Cadastre AIS for New York harbour, Mar–Apr 2024, 1,250 vessels) scores sliding windows of 20 AIS reports per vessel. The reconstruction error above τ marks an anomaly, and the feature that contributes most explains it (speed, course, position jump, transmission gap).
-- **Vision branch:** YOLOv8 detection, ByteTrack tracking, restricted-zone and loitering rules, then s_vision.
-- **Fusion:** camera tracks are projected to lat/lon and matched one-to-one with AIS vessels within 150 m and 60 s.
-  - The fused score is s_fused = α·s_AIS + (1−α)·s_vision.
-  - A track with no AIS match is a dark vessel.
+The project has three parts, plus one small layer that connects them:
 
 ```
-backend/    FastAPI service, models, demo data, training and evaluation scripts (see backend/README.md)
-frontend/   React + Vite dashboard: Dashboard, Live Analysis, Vessel Tracking, Alerts, Analytics, Settings
-Dockerfile  builds the frontend and serves it from the backend on port 7860 (Hugging Face Spaces)
+Maritime-Anomaly-Detection/
+│
+├── frontend/          PART 1 · Website (React + Vite dashboard)
+│                      Dashboard, Live Analysis, Vessel Tracking map, Alerts, Analytics, Settings
+│
+├── ais_detection/     PART 2 · AIS anomaly detection
+│                      Ais.ipynb (training notebook), LSTM autoencoder model, feature engineering,
+│                      the original Streamlit app, demo AIS data
+│
+├── computer_vision/   PART 3 · Computer vision
+│                      YOLOv8 vessel detection, ByteTrack tracking, restricted-zone / loitering rules,
+│                      training scripts + Colab notebook, demo video
+│
+├── fusion_api/        CONNECTS 2 + 3 and serves 1
+│                      combines the AIS score and the camera score into one alert (FastAPI server)
+│
+├── tests/             automatic tests for all parts
+├── config.yaml        all settings (thresholds, α, model paths, demo)
+├── requirements.txt   Python packages
+└── Dockerfile         builds everything into one container for deployment
 ```
 
-## Run locally (Windows)
-
-Backend (terminal 1):
+How it works:
 ```
-cd backend
+ AIS CSV ──► ais_detection (LSTM) ──► s_AIS ───┐
+                                                ├──► fusion_api ──► alerts ──► frontend (website)
+ Video   ──► computer_vision (YOLOv8) ► s_vision┘
+```
+- **AIS:** every window of 20 AIS reports of a vessel is reconstructed by the LSTM autoencoder. An error above τ = 2.2987 marks an anomaly.
+- **Camera:** vessels are detected and tracked. A track that enters a restricted zone or loiters gets s_vision > 0.
+- **Fusion:** camera tracks are placed on the map and matched to AIS vessels within 150 m and 60 s.
+  - The fused score is s_fused = α·s_AIS + (1−α)·s_vision, with α = 0.6.
+  - A camera vessel with no AIS match is a "dark vessel".
+
+## Run on your PC
+```
+cd F:\AI_ML
 .venv\Scripts\activate
-uvicorn api.app:app --port 8000
+uvicorn fusion_api.app:app --port 8000
 ```
-Frontend (terminal 2, for development with hot reload):
-```
-cd frontend
-npm install
-npm run dev            → http://localhost:5173
-```
-Or build the frontend once (`npm run build`) and open http://localhost:8000, since the backend serves `frontend/dist`.
+Open http://localhost:8000. After changing the frontend, run `npm run build` in `frontend/` once. For live editing, run `npm run dev` there and open http://localhost:5173.
 
-With Docker: `docker build -t maritimeguard . && docker run -p 7860:7860 maritimeguard` → http://localhost:7860
+Tests: `python -m pytest tests`
 
 ## Demo scenario
+The website starts with a demo:
 
-On start-up the service loads a demo:
+- **Camera:** a clip from the Singapore Maritime Dataset test split.
+- **AIS:** a simulated AIS file for the Singapore Strait.
+  - The ships in the clip transmit AIS, but the pilot boat does not (a dark vessel).
+  - Three other ships behave abnormally.
 
-- **Camera clip:** MVI_1486_VIS from the Singapore Maritime Dataset test split, seen by an approximately calibrated "Marina South" camera with one restricted zone.
-- **Simulated AIS file** (`backend/demo/ais_demo.csv`):
-  - the ships visible in the clip transmit AIS from where the camera sees them, but the pilot boat does not;
-  - 8 ships transit the Singapore Strait normally;
-  - 3 ships behave abnormally: a transmission gap, a spoofed position jump, and erratic speed and course.
+The AIS data are synthetic. The scores and alerts are the real outputs of the models. Real data can be uploaded on the Live Analysis page.
 
-The AIS data are synthetic. The anomaly scores, detections and alerts shown are the real outputs of the models. Real data can be uploaded on the Live Analysis page.
+## Deploy (GitHub → Hugging Face Space)
+Every push to `main` is copied to the Hugging Face Space by `.github/workflows/deploy-hf.yml`, and the Space rebuilds the Docker image. One-time setup:
 
-## Deploy (Hugging Face Spaces + GitHub)
-
-1. Create a Space on huggingface.co (SDK **Docker**, hardware CPU basic, which is free).
-2. Create a GitHub repository and push this folder (Git LFS is needed for the model and video files):
-   ```
-   git init -b main
-   git lfs install
-   git add .
-   git commit -m "MaritimeGuard"
-   git remote add origin https://github.com/<you>/<repo>.git
-   git push -u origin main
-   ```
-3. In GitHub, open the repository's Settings → Secrets and variables → Actions and add:
-   - the secret `HF_TOKEN`, a Hugging Face token with write access;
+1. Create the Space (SDK **Docker**, CPU basic).
+2. Create a Hugging Face token with write access.
+3. In GitHub, open Settings → Secrets and variables → Actions and add:
+   - the secret `HF_TOKEN`;
    - the variable `HF_SPACE` = `<hf-username>/<space-name>`.
-4. Every push to `main` now updates the Space (`.github/workflows/deploy-hf.yml`). The app is at `https://<hf-username>-<space-name>.hf.space`.
 
-A free Space sleeps when unused, so open it a few minutes before a presentation.
-
-### Updating the models later
-| Change | What to do |
+| To update | Do this, then push |
 |---|---|
-| Trained vessel detector | put `best.pt` at `backend/models/vessel_yolov8s_best.pt`, then push. The demo clip is re-analysed automatically. |
-| Detector test results | put `results/detector_*.json` from `scripts/evaluate_detector.py` in `backend/results/`, then push. They appear on Analytics. |
-| Retrained AIS model | replace the 3 files in `backend/models/ais/`, then push. |
-| AIS error distribution | s_AIS uses the training-error percentiles from Ais.ipynb (`models/ais/error_quantiles.json`). For the exact percentile rank, save the errors in the notebook (`np.save("saved_model/validation_errors.npy", train_errors)`), copy the file to `backend/models/ais/`, then push. |
-| Thresholds, α, zones, cameras | edit `backend/configs/*.yaml / *.json`, then push. |
+| Vision model after training | copy `best.pt` to `computer_vision/models/vessel_yolov8s_best.pt` |
+| Vision test results | `computer_vision/results/detector_*.json` (shown on Analytics) |
+| AIS model | replace the files in `ais_detection/models/` |
+| Settings, zones, cameras | `config.yaml`, `computer_vision/cameras.json` |

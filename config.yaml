@@ -1,0 +1,93 @@
+# Settings for all three parts: AIS detection, computer vision, and the fusion API that joins them.
+# Values mirror Table 2 and Sects. 3.3–3.4 of the paper; change them here, not in code.
+
+data:
+  roboflow:
+    workspace: "naman-kumar-chaudhary"     # from the Roboflow project URL: app.roboflow.com/<workspace>/<project>
+    project: "singapore-maritime-bvyeu"
+    version: 1
+    format: "yolov8"
+  root: "computer_vision/data/maritime"
+  # The paper trains a single "vessel" class. List the Roboflow class names that count as vessels;
+  # everything else (buoys, birds, swimmers, ...) is dropped. null = keep every labelled class as "vessel".
+  # Singapore Maritime Dataset: buoys, birds/planes and the mixed "Other" class are not vessels.
+  vessel_classes: ["Boat", "Ferry", "Kayak", "Sail boat", "Speed boat", "Vessel-ship"]
+  class_name: "vessel"
+  # Extra darkened and hazy copies of this fraction of the training images (night / fog augmentation).
+  low_light_fraction: 0.2
+
+model:
+  weights: "yolov8s.pt"             # yolov8n.pt / yolov8s.pt / yolov8m.pt (nano, small, medium)
+  imgsz: 640
+
+train:
+  epochs: 100
+  batch: 16
+  device: 0                         # GPU index; use "cpu" without a GPU (very slow)
+  cos_lr: true
+  patience: 30
+  project: "computer_vision/runs/detect"
+  name: "vessel_yolov8"
+  augment:
+    mosaic: 1.0
+    scale: 0.5
+    translate: 0.1
+    fliplr: 0.5
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+
+inference:
+  conf: 0.25
+  iou: 0.45                         # NMS IoU threshold θ
+  device: "cpu"
+  # Detector used by the service and the demo. Until the fine-tuned model exists, the COCO-pretrained
+  # fallback is used and only its "boat" class is kept. After training, copy best.pt to `weights` and push.
+  weights: "computer_vision/models/vessel_yolov8s_best.pt"
+  fallback_weights: "computer_vision/models/yolov8s.pt"
+  fallback_classes: ["boat"]
+  frame_stride: null                # process every n-th frame; null = choose it from target_fps
+  target_fps: 8                     # frames per second actually processed (keeps CPU inference fast)
+  max_video_seconds: 90             # uploads are cut after this much video
+  clahe:
+    enabled: true
+    brightness_threshold: 70        # mean V channel (0–255) below which a frame counts as low-light
+    clip_limit: 2.0
+    tile_grid: 8
+
+tracking:
+  tracker: "bytetrack"              # bytetrack | deepsort | none (per-frame detections, for the ablation)
+  deepsort_max_age: 30
+  bytetrack_cfg: "computer_vision/bytetrack_vessel.yaml"
+
+rules:
+  cameras_file: "computer_vision/cameras.json"
+  dwell_seconds: 120                # T_dwell
+  loiter_radius_px: 60              # a track that stays inside this radius for T_dwell is loitering
+
+fusion:
+  alpha: 0.6                        # weight of the AIS score in s_fused = α·s_AIS + (1−α)·s_vision
+  d_max_m: 150                      # association gate: distance between AIS and camera positions
+  dt_s: 60                          # association gate: time difference
+  ais_threshold: null               # τ; null = the threshold stored with the AIS model (ais_detection/models/metadata.pkl)
+  # s_AIS = percentile rank of the error among errors on normal traffic: from validation_errors.npy when present,
+  # else interpolated from the notebook's percentiles (error_quantiles.json), else an exponential tail at τ.
+  # Alert levels = 95th / 99th / 99.9th percentiles of the fused score on normal traffic (Sect. 3.4).
+  # s_AIS is a percentile rank, so on normal traffic it is uniform on [0, 1] and, with s_vision = 0, the fused
+  # score is α·U: the levels below are 0.6 × (0.95, 0.99, 0.999). Recalibrate with scripts/eval_fusion.py,
+  # which prints the levels measured on your labelled normal episodes, and whenever α changes.
+  levels:
+    advisory: 0.570
+    warning: 0.594
+    critical: 0.5994
+
+ais:
+  model_dir: "ais_detection/models"
+  validation_errors: "ais_detection/models/validation_errors.npy"   # optional: full array of errors on normal traffic
+  error_quantiles: "ais_detection/models/error_quantiles.json"      # fallback: percentiles printed by Ais.ipynb
+
+demo:
+  camera: "marina_south_demo"
+  video: "computer_vision/demo/demo_clip.mp4"
+  ais_csv: "ais_detection/demo/ais_demo.csv"
+  start_time: "2026-11-20T10:00:00Z"   # clock of the demo clip; the demo AIS file uses the same clock

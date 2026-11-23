@@ -1,7 +1,0 @@
-# Extra packages for data preparation, training, baselines and evaluation (Colab / GPU machine).
--r requirements.txt
-roboflow>=1.1
-deep-sort-realtime>=1.3       # DeepSORT comparison (Table 9)
-torchmetrics[detection]>=1.4  # Faster R-CNN / SSD baselines (Table 8)
-pycocotools
-pytest

@@ -1,16 +1,20 @@
-# React + Vite
+# Part 1: Frontend (website)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite + Tailwind dashboard. It gets all its data from the fusion API (`/api/...`).
 
-Currently, two official plugins are available:
+| Page | File | Shows |
+|---|---|---|
+| Dashboard | `src/pages/Dashboard.jsx` | KPIs, AIS anomaly score over time, alerts by type, latest alerts |
+| Live Analysis | `src/pages/LiveAnalysis.jsx` | upload AIS CSV / video / image, annotated video, results |
+| Vessel Tracking | `src/pages/VesselTracking.jsx` | map: AIS tracks, camera, restricted zone, camera tracks |
+| Anomaly Alerts | `src/pages/AnomalyAlerts.jsx` | fused alerts with evidence, status, CSV export |
+| Analytics | `src/pages/Analytics.jsx` | error per vessel, error distribution, model details, detector test results |
+| Settings | `src/pages/Settings.jsx` | fusion α, alert levels, matching distance / time |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+`src/api.js` calls the API, and `src/context/AppData.jsx` keeps the shared data (refreshed every 5 s).
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```
+npm install
+npm run dev      # http://localhost:5173 (needs the API on port 8000)
+npm run build    # creates dist/, served by the API at http://localhost:8000
+```
