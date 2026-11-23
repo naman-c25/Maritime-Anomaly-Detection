@@ -3,8 +3,10 @@ title: MaritimeGuard
 emoji: 🚢
 colorFrom: blue
 colorTo: indigo
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 5.9.1
+python_version: "3.12"
+app_file: app.py
 pinned: false
 ---
 
@@ -67,14 +69,16 @@ The website starts with a demo:
 
 The AIS data are synthetic. The scores and alerts are the real outputs of the models. Real data can be uploaded on the Live Analysis page.
 
-## Deploy (GitHub → Hugging Face Space)
-Every push to `main` is copied to the Hugging Face Space by `.github/workflows/deploy-hf.yml`, and the Space rebuilds the Docker image. One-time setup:
+## Deploy (GitHub → Hugging Face Space, free)
+The Space uses the free **Gradio SDK** (CPU basic). `app.py` starts the FastAPI server on port 7860; Gradio itself
+is not used. Every push to `main` runs `.github/workflows/deploy-hf.yml`, which builds the frontend and pushes the
+project to the Space. One-time setup:
+1. Create the Space: SDK **Gradio**, template Blank, hardware CPU basic (free), visibility Public.
+2. Create a Hugging Face access token with **Write** permission.
+3. GitHub → Settings → Secrets and variables → Actions: secret `HF_TOKEN`, variable `HF_SPACE` = `<hf-username>/<space-name>`.
+4. GitHub → Actions → "Deploy to Hugging Face Space" → Run workflow. The website is at `https://<hf-username>-<space-name>.hf.space`.
 
-1. Create the Space (SDK **Docker**, CPU basic).
-2. Create a Hugging Face token with write access.
-3. In GitHub, open Settings → Secrets and variables → Actions and add:
-   - the secret `HF_TOKEN`;
-   - the variable `HF_SPACE` = `<hf-username>/<space-name>`.
+`Dockerfile` builds the same app as one container for any Docker host.
 
 | To update | Do this, then push |
 |---|---|

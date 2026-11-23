@@ -1,6 +1,6 @@
 # Serving: everything the API (AIS model, vision branch, fusion) needs.
-# torch / torchvision: install the CPU build on servers, e.g.
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# The CPU builds of torch / torchvision are much smaller than the CUDA ones and are all a CPU server needs.
+--extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.5
 torchvision>=0.20
 ultralytics>=8.3,<9

@@ -1,7 +1,8 @@
-# Every push to main is mirrored to the Hugging Face Space, which rebuilds the Docker image.
+# Every push to main deploys the website to the Hugging Face Space (free Gradio SDK, CPU basic).
+# The Space runs `python app.py`; it has no Node.js, so the frontend is built here and pushed already built.
 # One-time setup in GitHub → Settings → Secrets and variables → Actions:
 #   secret   HF_TOKEN     a Hugging Face access token with "write" permission
-#   variable HF_SPACE     <hf-username>/<space-name>, e.g. naman/maritimeguard
+#   variable HF_SPACE     <hf-username>/<space-name>, e.g. naman-c25/maritimeguard
 name: Deploy to Hugging Face Space
 on:
   push:
@@ -12,11 +13,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
-      - name: Push to the Space
+      - name: Check settings
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ vars.HF_SPACE }}
@@ -25,5 +22,33 @@ jobs:
             echo "::error::Set the repository secret HF_TOKEN and the variable HF_SPACE (<hf-username>/<space-name>) under Settings → Secrets and variables → Actions, then re-run this workflow."
             exit 1
           fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the frontend
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Push to the Space (with the built frontend)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
           git lfs install
-          git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" HEAD:main
+          git checkout -b hf-deploy
+          git add -f frontend/dist
+          git commit -m "Deploy ${GITHUB_SHA::7} with built frontend"
+          git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-deploy:main
