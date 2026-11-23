@@ -153,14 +153,19 @@ def _startup():
     svc.load_demo()
 
 
-# Single-page frontend (served when built): unknown paths fall back to index.html for client-side routing.
+# Single-page frontend (served when built). Only the app's own pages and files get routes (no catch-all), so the
+# routes can also be placed in front of another server's routes (see app.py, used on Hugging Face ZeroGPU).
 STATIC = Path(os.environ.get("FRONTEND_DIST", ROOT / "frontend" / "dist"))
+PAGES = ["/", "/dashboard", "/live-analysis", "/vessel-tracking", "/anomaly-alerts", "/analytics", "/settings"]
+
 if STATIC.exists():
     app.mount("/assets", StaticFiles(directory=STATIC / "assets"), name="assets")
 
-    @app.get("/{path:path}", include_in_schema=False)
-    def spa(path: str):
-        f = (STATIC / path).resolve()
-        if path and STATIC.resolve() in f.parents and f.is_file():
-            return FileResponse(f)
+    def _index():
         return FileResponse(STATIC / "index.html")
+
+    for _page in PAGES:
+        app.add_api_route(_page, _index, include_in_schema=False, methods=["GET"])
+
+    for _f in (f for f in STATIC.iterdir() if f.is_file() and f.name != "index.html"):
+        app.add_api_route(f"/{_f.name}", (lambda f=_f: FileResponse(f)), include_in_schema=False, methods=["GET"])
