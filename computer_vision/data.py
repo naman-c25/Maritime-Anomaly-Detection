@@ -33,7 +33,7 @@ def label_for(img_path):
 
 def prepare_dataset(root, vessel_classes=None, class_name="vessel"):
     """Rewrites labels to one 'vessel' class (keeping a backup) and writes data_vessel.yaml with absolute paths."""
-    root = Path(root)
+    root = Path(root).resolve()
     meta = yaml.safe_load(open(root / "data.yaml", encoding="utf-8"))
     names = meta["names"] if isinstance(meta["names"], list) else [meta["names"][k] for k in sorted(meta["names"])]
     wanted = None if vessel_classes is None else {c.lower() for c in vessel_classes}

@@ -30,6 +30,7 @@ def main():
         root = download_roboflow(cfg, key)
     else:
         root = Path(args.root) if args.root else ROOT / cfg["data"]["root"]
+    root = Path(root).resolve()   # absolute paths in data_vessel.yaml; Ultralytics resolves relative ones elsewhere
     if not (root / "data.yaml").exists():
         sys.exit(f"no data.yaml in {root}")
 
