@@ -48,7 +48,10 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git lfs install
-          git checkout -b hf-deploy
+          # The Space gets one fresh commit with the current files only (no history): Hugging Face rejects
+          # pushes whose history contains binary files outside LFS (e.g. an old maritime_cv.zip).
+          git checkout --orphan hf-deploy
+          git add -A
           git add -f frontend/dist
-          git commit -m "Deploy ${GITHUB_SHA::7} with built frontend"
+          git commit -q -m "Deploy ${GITHUB_SHA::7} with built frontend"
           git push --force "https://user:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-deploy:main
