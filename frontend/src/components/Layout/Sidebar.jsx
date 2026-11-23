@@ -1,4 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
   Map,
@@ -8,10 +8,14 @@ import {
   Anchor,
   Shield,
   Radio,
+  ScanSearch,
+  Cpu,
 } from 'lucide-react'
+import { useAppData } from '../../context/AppData'
 
 const navItems = [
   { to: '/dashboard',       icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/live-analysis',   icon: ScanSearch,      label: 'Live Analysis' },
   { to: '/vessel-tracking', icon: Map,             label: 'Vessel Tracking' },
   { to: '/anomaly-alerts',  icon: AlertTriangle,   label: 'Anomaly Alerts' },
   { to: '/analytics',       icon: BarChart3,       label: 'Analytics' },
@@ -19,6 +23,10 @@ const navItems = [
 ]
 
 export default function Sidebar() {
+  const { state, online } = useAppData()
+  const ok = online !== false
+  const nAis = state?.ais?.n_vessels ?? 0
+  const det = state?.detector
   return (
     <aside className="w-64 flex-shrink-0 bg-navy-800/80 backdrop-blur-sm border-r border-navy-600/30 flex flex-col">
       {/* Logo / Brand */}
@@ -34,18 +42,26 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* System Status */}
-      <div className="px-4 py-3 mx-4 mt-4 rounded-lg bg-alert-green/10 border border-alert-green/20">
+      {/* System Status (from the backend) */}
+      <div className={`px-4 py-3 mx-4 mt-4 rounded-lg border ${ok ? 'bg-alert-green/10 border-alert-green/20' : 'bg-red-500/10 border-red-500/20'}`}>
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-alert-green opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-alert-green"></span>
+            {ok && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-alert-green opacity-75"></span>}
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${ok ? 'bg-alert-green' : 'bg-red-500'}`}></span>
           </span>
-          <span className="text-xs text-alert-green font-medium">System Online</span>
+          <span className={`text-xs font-medium ${ok ? 'text-alert-green' : 'text-red-400'}`}>
+            {online === null ? 'Connecting…' : ok ? 'System Online' : 'Backend Offline'}
+          </span>
         </div>
         <div className="flex items-center gap-2 mt-1.5">
           <Radio className="w-3 h-3 text-slate-400" />
-          <span className="text-xs text-slate-400">AIS Feed Active</span>
+          <span className="text-xs text-slate-400">AIS model · {nAis} vessels loaded</span>
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <Cpu className="w-3 h-3 text-slate-400" />
+          <span className="text-xs text-slate-400">
+            {det ? (det.fallback ? 'Detector: pretrained YOLOv8' : 'Detector: vessel YOLOv8') : 'Detector: —'}
+          </span>
         </div>
       </div>
 
@@ -74,8 +90,8 @@ export default function Sidebar() {
             <Anchor className="w-4 h-4 text-ocean-400" />
           </div>
           <div>
-            <p className="text-xs text-white font-medium">Admin User</p>
-            <p className="text-xs text-slate-500">Maritime Control</p>
+            <p className="text-xs text-white font-medium">Operator Console</p>
+            <p className="text-xs text-slate-500">AIS + Camera Fusion</p>
           </div>
         </div>
       </div>
