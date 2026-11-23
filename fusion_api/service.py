@@ -246,6 +246,7 @@ class Service:
     def set_alert_status(self, alert_id, status):
         with self.lock:
             self.alert_status[alert_id] = status
+            self.updated_at = time.time()
             for a in self.alerts:
                 if a["id"] == alert_id:
                     a["status"] = status
@@ -273,6 +274,34 @@ class Service:
                       "position": cam.get("position"), "frame_size": cam.get("frame_size"), "zones": zones}
         return out
 
+    # Anomaly categories for the dashboard trend chart (by the feature that dominates a window's error)
+    TREND_CATEGORY = {"distance_nm": "spoofing", "time_gap_min": "darkShip"}
+
+    def trend(self):
+        """Anomalies over time: AIS windows above τ by category, plus camera zone/loitering events and dark vessels.
+        Bucket size adapts to the time span of the data (10 min, 1 h or 1 day)."""
+        tau = self.cfg["fusion"]["ais_threshold"]
+        events = []
+        for p in self._ais_points():
+            if p["recon_error"] > tau:
+                events.append((p["t"], self.TREND_CATEGORY.get(p.get("top_feature"), "speedAnomaly")))
+        if self.vision:
+            events += [(e["t"], "unauthorized") for e in self.vision.get("events", [])]
+            events += [(a["t"], "darkShip") for a in self.alerts if a["source"] == "camera" and not a["mmsi"] and a.get("t")]
+        times = [p["t"] for p in self._ais_points()] + [t for t, _ in events]
+        if not times:
+            return []
+        t0, t1 = min(times), max(times)
+        span = t1 - t0
+        step, fmt = (600, "%H:%M") if span <= 6 * 3600 else ((3600, "%H:%M") if span <= 2 * 86400 else (86400, "%m-%d"))
+        start = int(t0 // step * step)
+        n = int((t1 - start) // step) + 1
+        rows = [{"time": pd.Timestamp(start + i * step, unit="s", tz="UTC").strftime(fmt),
+                 "spoofing": 0, "darkShip": 0, "speedAnomaly": 0, "unauthorized": 0} for i in range(n)]
+        for t, cat in events:
+            rows[min(n - 1, int((t - start) // step))][cat] += 1
+        return rows
+
     def evaluation(self):
         """Detector test results written by scripts/evaluate_detector.py (results/detector_*.json), if present."""
         out = {}
@@ -285,7 +314,7 @@ class Service:
 
     def snapshot(self):
         with self.lock:
-            ais = None
+            ais, trend = None, []
             if self.ais:
                 ais = {k: v for k, v in self.ais.items() if k != "vessels"}
                 ais["vessels"] = [{k: v for k, v in ves.items() if k != "points"} for ves in self.ais["vessels"]]
@@ -298,12 +327,16 @@ class Service:
                     ais["error_histogram"] = [{"log10_error": round(float((bins[i] + bins[i + 1]) / 2), 3),
                                                "count": int(c)} for i, c in enumerate(hist)]
                 ais["source"] = self.ais_source
+                for ves in ais["vessels"]:
+                    ves["risk"] = (round(100 * self.scorer(ves["max_error"]), 1)
+                                   if ves.get("max_error") is not None else None)
+            trend = self.trend()
             vision = copy.deepcopy(self.vision) if self.vision else None
             if vision:
                 vision["source"] = self.vision_source
                 vision.pop("video", None)
             running = [j for j in self.jobs.values() if j["status"] in ("queued", "running")]
-            return {"updated_at": self.updated_at, "ais": ais, "vision": vision, "alerts": self.alerts,
+            return {"updated_at": self.updated_at, "ais": ais, "vision": vision, "alerts": self.alerts, "trend": trend,
                     "settings": self.settings(), "detector": self.detector_info(), "ais_model": self.ais_model.info,
                     "cameras": self.camera_geometry(),
                     "jobs": running, "evaluation": self.evaluation()}

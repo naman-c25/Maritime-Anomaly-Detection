@@ -13,7 +13,9 @@ export function AppDataProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       const s = await api.state()
-      setState(s)
+      // keep the same object when nothing changed, so charts do not re-animate on every poll
+      setState(prev => (prev && prev.updated_at === s.updated_at &&
+                        JSON.stringify(prev.jobs) === JSON.stringify(s.jobs) ? prev : s))
       setOnline(true)
       setError(null)
       return s

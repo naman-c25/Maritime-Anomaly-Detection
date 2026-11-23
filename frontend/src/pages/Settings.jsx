@@ -1,9 +1,49 @@
 import { useState } from 'react'
-import { Save, Check, Sliders, GitMerge, Database, RotateCcw, Loader2 } from 'lucide-react'
-import { useAppData } from '../context/AppData'
-import { api } from '../api'
-import { BackendGate } from '../components/common'
-import { fmt } from '../utils/helpers'
+import { Save, Bell, Shield, Sliders, Radio, Database, Check } from 'lucide-react'
+
+// NOTE: Settings are controlled React state only — no persistence or API connection exists.
+// "Save Changes" logs to console; backend integration is a future phase.
+
+const defaultSettings = {
+  // Alert thresholds
+  spoofing:     true,
+  darkShip:     true,
+  speed:        true,
+  route:        false,
+  // Detection sensitivity
+  aiConfidence: 'Medium (80%+)',
+  cooldown:     '15 minutes',
+  // AIS feed
+  aisLive:      true,
+  replay:       false,
+  aisInterval:  '30 seconds',
+  // Zones
+  zoneMalacca:  true,
+  zoneAden:     true,
+  zoneBengal:   true,
+  zoneArabian:  false,
+  // Data
+  autoExport:   false,
+  retention:    '90 days',
+}
+
+// Controlled toggle switch — uses checked + onChange (not defaultChecked)
+function ToggleSwitch({ id, checked, onChange }) {
+  return (
+    <label id={id} className="relative inline-flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="sr-only peer"
+      />
+      <div className="w-9 h-5 bg-navy-600 rounded-full peer peer-checked:bg-ocean-600
+                      after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                      after:bg-white after:rounded-full after:h-4 after:w-4
+                      after:transition-all peer-checked:after:translate-x-4" />
+    </label>
+  )
+}
 
 function SettingSection({ icon: Icon, title, children }) {
   return (
@@ -31,107 +71,146 @@ function SettingRow({ label, description, children }) {
   )
 }
 
-const inputClass = `w-28 bg-navy-700/60 border border-navy-600/40 text-sm text-white text-right
-  rounded-lg px-3 py-1.5 focus:outline-none focus:border-ocean-600/60`
-
-function SettingsBody() {
-  const { state, saveSettings, loadDemo, waitForJob } = useAppData()
-  const s = state.settings
-  // BackendGate guarantees state is loaded, so the form starts from the server's current values.
-  const [form, setForm] = useState(() => ({ alpha: s.alpha, ...s.levels, d_max_m: s.d_max_m, dt_s: s.dt_s }))
-  const [saved, setSaved] = useState(false)
-  const [err, setErr] = useState(null)
-  const [busy, setBusy] = useState(null)
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-
-  const save = async () => {
-    setErr(null)
-    try {
-      await saveSettings({
-        alpha: Number(form.alpha), d_max_m: Number(form.d_max_m), dt_s: Number(form.dt_s),
-        levels: { advisory: Number(form.advisory), warning: Number(form.warning), critical: Number(form.critical) },
-      })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
-    } catch (e) { setErr(e.message) }
-  }
-
-  const run = async (name, fn) => {
-    setBusy(name); setErr(null)
-    try {
-      const job = await fn()
-      if (job?.id) await waitForJob(job.id)
-    } catch (e) { setErr(e.message) } finally { setBusy(null) }
-  }
-
-  return (
-    <div className="space-y-5 max-w-3xl">
-      <div className="flex justify-end">
-        <button onClick={save} className={`btn-primary transition-colors ${saved ? 'bg-green-600 hover:bg-green-500' : ''}`}>
-          {saved ? <><Check className="w-4 h-4" /> Applied</> : <><Save className="w-4 h-4" /> Apply</>}
-        </button>
-      </div>
-      {err && <p className="text-xs text-red-400">{err}</p>}
-
-      <SettingSection icon={GitMerge} title="Fusion">
-        <SettingRow label={`AIS weight α = ${fmt(form.alpha, 2)}`}
-                    description="s_fused = α·s_AIS + (1 − α)·s_vision. 1 = AIS only, 0 = camera only.">
-          <input type="range" min="0" max="1" step="0.05" value={form.alpha} onChange={e => set('alpha', e.target.value)}
-                 className="w-48 accent-ocean-500" />
-        </SettingRow>
-        <SettingRow label="Association distance (m)" description="Max. distance between a camera track and an AIS report">
-          <input type="number" value={form.d_max_m} onChange={e => set('d_max_m', e.target.value)} className={inputClass} />
-        </SettingRow>
-        <SettingRow label="Association time window (s)" description="Max. time difference between them">
-          <input type="number" value={form.dt_s} onChange={e => set('dt_s', e.target.value)} className={inputClass} />
-        </SettingRow>
-      </SettingSection>
-
-      <SettingSection icon={Sliders} title="Alert Levels">
-        <p className="text-xs text-slate-500">
-          A vessel is alerted when its fused score reaches a level. The defaults are α × the 95th / 99th / 99.9th
-          percentile of s_AIS on normal traffic; change α and you usually want to rescale these too.
-        </p>
-        {['advisory', 'warning', 'critical'].map(l => (
-          <SettingRow key={l} label={l[0].toUpperCase() + l.slice(1)}>
-            <input type="number" step="0.001" value={form[l]} onChange={e => set(l, e.target.value)} className={inputClass} />
-          </SettingRow>
-        ))}
-      </SettingSection>
-
-      <SettingSection icon={Database} title="Data">
-        <SettingRow label="Reload demo scenario" description="Simulated Singapore Strait AIS + Singapore Maritime Dataset clip">
-          <button className="btn-ghost" disabled={!!busy} onClick={() => run('demo', loadDemo)}>
-            {busy === 'demo' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Reload
-          </button>
-        </SettingRow>
-        <SettingRow label="Re-run detector on the demo clip" description="Needed only if you changed weights or rules without restarting">
-          <button className="btn-ghost" disabled={!!busy} onClick={() => run('rebuild', async () => (await api.rebuildDemo()).job)}>
-            {busy === 'rebuild' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} Re-run
-          </button>
-        </SettingRow>
-        <SettingRow label="AIS anomaly threshold τ" description="Stored with the AIS model (99th percentile of the training reconstruction errors)">
-          <span className="font-mono text-sm text-white">{fmt(s.ais_threshold, 4)}</span>
-        </SettingRow>
-        <SettingRow label="Detector" description={state.detector.note}>
-          <span className="font-mono text-sm text-white">{state.detector.weights}</span>
-        </SettingRow>
-      </SettingSection>
-      <p className="text-xs text-slate-500">
-        Changes apply to this server session. To make them permanent, edit config.yaml and push.
-      </p>
-    </div>
-  )
-}
+// Shared select styling
+const selectClass = `bg-navy-700/60 border border-navy-600/40 text-sm text-white
+  rounded-lg px-3 py-1.5 focus:outline-none focus:border-ocean-600/60 cursor-pointer`
 
 export default function Settings() {
+  const [settings, setSettings] = useState(defaultSettings)
+  const [saved, setSaved]       = useState(false)
+
+  const toggle = key => setSettings(prev => ({ ...prev, [key]: !prev[key] }))
+  const select = (key, val) => setSettings(prev => ({ ...prev, [key]: val }))
+
+  const handleSave = () => {
+    // In production this would POST to the backend API.
+    // Currently logs to console as no API is connected.
+    console.log('[MaritimeGuard] Settings saved (mock):', settings)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Settings</h2>
-        <p className="text-slate-400 text-sm">Fusion parameters and alert levels (applied live)</p>
+    <div className="space-y-5 animate-fade-in max-w-3xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Settings</h2>
+          <p className="text-slate-400 text-sm">System configuration and preferences</p>
+        </div>
+        <button
+          id="settings-save"
+          onClick={handleSave}
+          className={`btn-primary transition-colors ${saved ? 'bg-green-600 hover:bg-green-500' : ''}`}
+        >
+          {saved
+            ? <><Check className="w-4 h-4" /> Saved!</>
+            : <><Save className="w-4 h-4" /> Save Changes</>
+          }
+        </button>
       </div>
-      <BackendGate><SettingsBody /></BackendGate>
+
+      {/* Alert Thresholds */}
+      <SettingSection icon={Bell} title="Alert Thresholds">
+        <SettingRow label="AIS Spoofing Alerts" description="Trigger when AIS identity mismatch detected">
+          <ToggleSwitch id="toggle-spoofing" checked={settings.spoofing} onChange={() => toggle('spoofing')} />
+        </SettingRow>
+        <SettingRow label="Dark Ship Detection" description="Alert when vessel AIS goes silent unexpectedly">
+          <ToggleSwitch id="toggle-dark-ship" checked={settings.darkShip} onChange={() => toggle('darkShip')} />
+        </SettingRow>
+        <SettingRow label="Speed Anomaly" description="Flag vessels exceeding expected speed thresholds">
+          <ToggleSwitch id="toggle-speed" checked={settings.speed} onChange={() => toggle('speed')} />
+        </SettingRow>
+        <SettingRow label="Route Deviation" description="Detect vessels deviating from declared routes">
+          <ToggleSwitch id="toggle-route" checked={settings.route} onChange={() => toggle('route')} />
+        </SettingRow>
+      </SettingSection>
+
+      {/* Detection Sensitivity */}
+      <SettingSection icon={Sliders} title="Detection Sensitivity">
+        <SettingRow label="AI Confidence Threshold" description="Minimum confidence score to raise an alert">
+          <select
+            id="ai-confidence-select"
+            value={settings.aiConfidence}
+            onChange={e => select('aiConfidence', e.target.value)}
+            className={selectClass}
+          >
+            <option>High (95%+)</option>
+            <option>Medium (80%+)</option>
+            <option>Low (60%+)</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Alert Cooldown Period" description="Minimum time between repeated alerts for the same vessel">
+          <select
+            id="cooldown-select"
+            value={settings.cooldown}
+            onChange={e => select('cooldown', e.target.value)}
+            className={selectClass}
+          >
+            <option>5 minutes</option>
+            <option>15 minutes</option>
+            <option>30 minutes</option>
+            <option>1 hour</option>
+          </select>
+        </SettingRow>
+      </SettingSection>
+
+      {/* AIS Data Feed */}
+      <SettingSection icon={Radio} title="AIS Data Feed">
+        <SettingRow label="Live AIS Feed" description="Receive real-time vessel position updates">
+          <ToggleSwitch id="toggle-ais-live" checked={settings.aisLive} onChange={() => toggle('aisLive')} />
+        </SettingRow>
+        <SettingRow label="Historical Replay Mode" description="Enable replay of past AIS data for analysis">
+          <ToggleSwitch id="toggle-replay" checked={settings.replay} onChange={() => toggle('replay')} />
+        </SettingRow>
+        <SettingRow label="AIS Update Interval">
+          <select
+            id="ais-interval-select"
+            value={settings.aisInterval}
+            onChange={e => select('aisInterval', e.target.value)}
+            className={selectClass}
+          >
+            <option>10 seconds</option>
+            <option>30 seconds</option>
+            <option>1 minute</option>
+          </select>
+        </SettingRow>
+      </SettingSection>
+
+      {/* Monitored Zones */}
+      <SettingSection icon={Shield} title="Monitored Zones">
+        <SettingRow label="Strait of Malacca" description="High-priority monitoring zone">
+          <ToggleSwitch id="toggle-zone-malacca" checked={settings.zoneMalacca} onChange={() => toggle('zoneMalacca')} />
+        </SettingRow>
+        <SettingRow label="Gulf of Aden" description="Anti-piracy surveillance zone">
+          <ToggleSwitch id="toggle-zone-aden" checked={settings.zoneAden} onChange={() => toggle('zoneAden')} />
+        </SettingRow>
+        <SettingRow label="Bay of Bengal" description="Regional monitoring zone">
+          <ToggleSwitch id="toggle-zone-bengal" checked={settings.zoneBengal} onChange={() => toggle('zoneBengal')} />
+        </SettingRow>
+        <SettingRow label="Arabian Sea" description="Extended patrol zone">
+          <ToggleSwitch id="toggle-zone-arabian" checked={settings.zoneArabian} onChange={() => toggle('zoneArabian')} />
+        </SettingRow>
+      </SettingSection>
+
+      {/* Data & Export */}
+      <SettingSection icon={Database} title="Data & Export">
+        <SettingRow label="Auto-export Reports" description="Daily anomaly summary sent at midnight UTC">
+          <ToggleSwitch id="toggle-auto-export" checked={settings.autoExport} onChange={() => toggle('autoExport')} />
+        </SettingRow>
+        <SettingRow label="Data Retention Period">
+          <select
+            id="retention-select"
+            value={settings.retention}
+            onChange={e => select('retention', e.target.value)}
+            className={selectClass}
+          >
+            <option>30 days</option>
+            <option>90 days</option>
+            <option>1 year</option>
+          </select>
+        </SettingRow>
+      </SettingSection>
     </div>
   )
 }

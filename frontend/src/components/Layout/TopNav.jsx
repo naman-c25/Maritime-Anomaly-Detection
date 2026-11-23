@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, Search, ChevronRight, Home, X, AlertTriangle } from 'lucide-react'
 import { useLocation, Link } from 'react-router-dom'
-import { useAppData } from '../../context/AppData'
-import { getSeverityBadge, LEVEL_LABEL } from '../../utils/helpers'
+import { useLiveData } from '../../data/liveData'
+import { getSeverityBadge } from '../../utils/helpers'
 
 const pageNames = {
   '/dashboard':        'Dashboard',
@@ -16,9 +16,8 @@ const pageNames = {
 export default function TopNav() {
   const { pathname } = useLocation()
   const currentPage = pageNames[pathname] ?? 'Dashboard'
-  const { state } = useAppData()
-  const allActive = (state?.alerts ?? []).filter(a => a.status === 'Active')
-  const activeAlerts = allActive.slice(0, 4)
+  const { allAlerts } = useLiveData()
+  const activeAlerts = allAlerts.filter(a => a.status === 'Active').slice(0, 3)
 
   // Live UTC clock — updates every second
   const [now, setNow] = useState(new Date())
@@ -87,7 +86,6 @@ export default function TopNav() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-navy-600/30">
               <h3 className="text-sm font-semibold text-white">
                 Active Alerts
-                <span className="ml-2 text-xs font-normal text-slate-400">({allActive.length})</span>
               </h3>
               <button
                 onClick={() => setShowNotif(false)}
@@ -99,22 +97,17 @@ export default function TopNav() {
             </div>
 
             <div className="divide-y divide-navy-600/15">
-              {activeAlerts.length === 0 && (
-                <p className="px-4 py-6 text-center text-xs text-slate-500">No active alerts</p>
-              )}
               {activeAlerts.map(a => (
                 <div key={a.id} className="px-4 py-3 hover:bg-navy-700/30 transition-colors">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-white text-xs font-medium truncate">{a.name}</p>
+                      <p className="text-white text-xs font-medium truncate">{a.vessel}</p>
                       <p className="text-slate-400 text-xs">{a.type}</p>
-                      <p className="text-slate-500 text-xs mt-0.5">
-                        {a.time ? a.time.slice(11, 19) + ' UTC' : '—'} · {a.source === 'camera' ? 'Camera' : 'AIS'}
-                      </p>
+                      <p className="text-slate-500 text-xs mt-0.5">{a.time} · {a.zone}</p>
                     </div>
-                    <span className={`${getSeverityBadge(a.level)} flex-shrink-0`}>
-                      {LEVEL_LABEL[a.level]}
+                    <span className={`${getSeverityBadge(a.severity)} flex-shrink-0 capitalize`}>
+                      {a.severity}
                     </span>
                   </div>
                 </div>
