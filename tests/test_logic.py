@@ -160,3 +160,11 @@ def test_association_is_one_to_one():
     assert pairs[1][0]["mmsi"] == 111 and pairs[2] is None      # the closer track gets the only AIS vessel
     alerts = build_alerts(vision, ais, AisScorer([0.01 * i for i in range(300)]), CFG)
     assert [a["track_id"] for a in alerts] == [2] and alerts[0]["type"] == "Dark vessel in restricted zone"
+
+
+def test_short_unmatched_tracks_raise_no_alert():
+    cfg = {**CFG, "fusion": {**CFG["fusion"], "min_track_s": 5}}
+    vision = [{"track_id": 1, "lat": 40.6, "lon": -74.0, "first_t": 0.0, "last_t": 1.5, "s_vision": 0.0},
+              {"track_id": 2, "lat": 40.7, "lon": -74.1, "first_t": 0.0, "last_t": 20.0, "s_vision": 0.0}]
+    alerts = build_alerts(vision, [], AisScorer([0.01 * i for i in range(300)]), cfg)
+    assert [a["track_id"] for a in alerts] == [2]              # the 1.5 s fragment is ignored

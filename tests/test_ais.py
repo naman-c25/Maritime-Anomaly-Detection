@@ -50,7 +50,7 @@ def test_demo_scenario_scores():
     model = AisModel(MODEL_DIR)
     res = analyze_dataframe(pd.read_csv(ROOT / "ais_detection" / "demo" / "ais_demo.csv"), model)
     status = {v["name"]: v["status"] for v in res["vessels"]}
-    assert res["mode"] == "raw" and res["n_vessels"] == 16
+    assert res["mode"] == "raw" and res["n_vessels"] == 18
     assert {n for n, s in status.items() if s == "anomaly"} == {"KAPAL SETIA", "BLUE MARLIN 7", "OCEAN TRADER"}
     # the feature-only format of the AIS_WEBAPP gives the same score for the same trajectory
     v = next(v for v in res["vessels"] if v["name"] == "KAPAL SETIA")

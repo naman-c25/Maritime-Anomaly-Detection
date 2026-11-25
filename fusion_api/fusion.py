@@ -96,8 +96,12 @@ def build_alerts(vision_tracks, ais_points, ais_scorer, cfg, feature_labels=None
     pairs = associate(vision_tracks, ais_points, f["d_max_m"], f["dt_s"])
     alerts, matched_mmsi = [], set()
 
+    min_track_s = f.get("min_track_s", 0) or 0
     for tr in vision_tracks:
         match = pairs.get(tr["track_id"])
+        # very short tracks are usually tracker fragments of a vessel already followed by another track
+        if match is None and tr.get("last_t", 0) - tr.get("first_t", 0) < min_track_s:
+            continue
         reasons = list(tr.get("reasons", []))
         a = None
         if match is None:

@@ -32,6 +32,12 @@ SCENE = [
     ("ORIENT GRACE", 566301220, "Container Ship", (10, 223)),
     ("SG PILOT BUOY 3", 995631003, "Aid to Navigation", (763, 489)),
 ]
+# Vessels in the clip that the fine-tuned detector also finds (a distant cargo ship on the left and a harbour tug
+# between the two large ships). Generated after the rest of the scenario so the other vessels' data are unchanged.
+SCENE_EXTRA = [
+    ("LUMINA BAY", 564110870, "General Cargo", (147, 218)),
+    ("HARBOUR TUG 7", 563222450, "Tug", (683, 193)),
+]
 
 
 def reports(t0, t1, step_lo=60, step_hi=180):
@@ -134,6 +140,10 @@ def main():
         lat += sog * 0.02 * NM_DEG * math.cos(math.radians(cog))
         lon += sog * 0.02 * NM_DEG * math.sin(math.radians(cog))
         rows.append((370442210, t, lat, lon, sog, cog, "OCEAN TRADER", "Tanker"))
+
+    for name, mmsi, vtype, px in SCENE_EXTRA:
+        lat, lon = proj.pixel_to_latlon(px)
+        rows += anchored(name, mmsi, vtype, lat, lon, t0, t1, rng.uniform(0, 360))
 
     df = pd.DataFrame(rows, columns=["MMSI", "t", "LAT", "LON", "SOG", "COG", "VesselName", "VesselType"])
     df["BaseDateTime"] = pd.to_datetime(df["t"], unit="s", utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ")

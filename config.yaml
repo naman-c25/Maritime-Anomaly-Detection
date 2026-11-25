@@ -69,6 +69,7 @@ fusion:
   alpha: 0.6                        # weight of the AIS score in s_fused = α·s_AIS + (1−α)·s_vision
   d_max_m: 150                      # association gate: distance between AIS and camera positions
   dt_s: 60                          # association gate: time difference
+  min_track_s: 5                    # camera tracks shorter than this (tracker fragments) raise no dark-vessel alert
   ais_threshold: null               # τ; null = the threshold stored with the AIS model (ais_detection/models/metadata.pkl)
   # s_AIS = percentile rank of the error among errors on normal traffic: from validation_errors.npy when present,
   # else interpolated from the notebook's percentiles (error_quantiles.json), else an exponential tail at τ.
