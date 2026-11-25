@@ -86,3 +86,9 @@ project to the Space. One-time setup:
 | Vision test results | `computer_vision/results/detector_*.json` (shown on Analytics) |
 | AIS model | replace the files in `ais_detection/models/` |
 | Settings, zones, cameras | `config.yaml`, `computer_vision/cameras.json` |
+
+## Pending work
+- **Baseline detectors (SSD-MobileNet, Faster R-CNN): training pending.** These models compare YOLOv8s with other
+  detectors on the same test videos. The script is ready (`computer_vision/scripts/train_baselines.py`, last cell
+  of the Colab notebook) but has not been run yet. YOLOv8s is trained and evaluated
+  (`computer_vision/results/detector_vessel_yolov8s_best.json`).
