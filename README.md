@@ -51,7 +51,7 @@ How it works:
 
 ## Run on your PC
 ```
-cd F:\AI_ML
+cd D:\AI_ML
 .venv\Scripts\activate
 uvicorn fusion_api.app:app --port 8000
 ```
